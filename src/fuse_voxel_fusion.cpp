@@ -77,9 +77,8 @@ class Talker
 
     // Convert to ROS data type
     sensor_msgs::PointCloud2Ptr output;
-    // Need testing
+    // Need testing, replace the above line with below
     // sensor_msgs::PointCloud2Ptr output = boost::make_shared<sensor_msgs::PointCloud2>(*cloud_msg);
-    // sensor_msgs::PointCloud2* output = new sensor_msgs::PointCloud2;
     
     pcl_conversions::fromPCL(cloud_filtered, *output);
 
