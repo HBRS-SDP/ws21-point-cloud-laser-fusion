@@ -1,8 +1,10 @@
 
 #include <ros/ros.h>
+#include <ros/callback_queue.h>
 
 #include <std_msgs/String.h>
 #include <string.h>
+#include <thread>
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <sensor_msgs/LaserScan.h>
 #include <tf2_ros/buffer.h>
@@ -11,19 +13,46 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
-//PCL Specific includes
-// #include<pcl/ros/conversions.h>
+//PCL specific
 #include<pcl_conversions/pcl_conversions.h>
 #include<pcl/point_cloud.h>
 #include<pcl/point_types.h>
 #include<pcl/filters/voxel_grid.h>
 
-
 #include <sstream>
+//This global variable must be changed
+//Dedicated callback queue for PCL subscriber
+ros::CallbackQueue callback_queue_pcl;
+
 class Talker
 {
+  public:
+  //Constructor
+  Talker(std::string initial_msg)
+    : m_msg(initial_msg)
+  {
+    tf2_.reset(new tf2_ros::Buffer());
+    tf2_listener_.reset(new tf2_ros::TransformListener(*tf2_));
+
+    //Dedicated callback queue for PCL subscriber
+    m_nh_pcl.setCallbackQueue(&callback_queue_pcl);
+
+    //Need to test if laser subscriber queue size affects performance
+    l_sub = m_nh.subscribe("/hsrb/base_scan", 5, &Talker::lasermessageCallback, this);
+    //The PCL subscriber queue is assigned to 1 because we want to keep only the latest PCL message
+    p_sub = m_nh_pcl.subscribe("/hsrb/head_rgbd_sensor/depth_registered/rectified_points", 1, &Talker::pointcloudCallback, this);
+
+    //Check whether advertise should be before or after subscribe*
+    //Need to test if publisher queue size affects performance
+    m_pub = m_nh.advertise<sensor_msgs::LaserScan>("laser_output", 5);
+    pc_pub = m_nh.advertise<sensor_msgs::PointCloud2>("filtered_pcl",5);
+  }
+
   //Private class member and function
+  //For handilng all other messages
   ros::NodeHandle m_nh;
+  //For handling PCL messages only
+  ros::NodeHandle m_nh_pcl;
   boost::shared_ptr<tf2_ros::Buffer> tf2_;
   boost::shared_ptr<tf2_ros::TransformListener> tf2_listener_;
 
@@ -36,15 +65,14 @@ class Talker
   ros::Publisher pc_pub;
   
   sensor_msgs::LaserScan projected_laser;
-
-  int pc_count=0;
-
+  //int num_points=0;
 
   void pointcloudCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
   {
     //Start time for point cloud callback
     ros::Time begin_time = ros::Time::now();
-    sensor_msgs::LaserScan fused_laser;
+    int num_points=0;
+
     // Container for original & filtered data
     pcl::PCLPointCloud2* cloudf = new pcl::PCLPointCloud2; 
     pcl::PCLPointCloud2ConstPtr cloudPtr(cloudf);
@@ -53,20 +81,17 @@ class Talker
     // Convert to PCL data type
     pcl_conversions::toPCL(*cloud_msg, *cloudf);
 
-    // Perform the actual filtering
+    // Perform the VoxelGrid filtering
     pcl::VoxelGrid<pcl::PCLPointCloud2> sor;
     sor.setInputCloud (cloudPtr);
     sor.setLeafSize (0.1, 0.1, 0.1);
     sor.filter (cloud_filtered);
 
     // Convert to ROS data type
-    sensor_msgs::PointCloud2 output;
-    pcl_conversions::fromPCL(cloud_filtered, output);
+    sensor_msgs::PointCloud2Ptr output = boost::make_shared<sensor_msgs::PointCloud2>(*cloud_msg);
+    pcl_conversions::fromPCL(cloud_filtered, *output);
 
-    // Publish the data
-    pc_pub.publish (output);
-
-    
+    // Exit if no laserscan callback is made before
     if (num_range<0)
     {
       return;
@@ -161,20 +186,21 @@ class Talker
         projected_laser.ranges[index] = range;
         count_accepted++;
       }
+      num_points=num_points+1;
       
     }
-
-  //End time for laser callback
+  //End time for point cloud callback
   ros::Duration end_time = ros::Time::now() - begin_time;
-  ROS_INFO("Laser message duration: %f", end_time.toSec());
+  //The below messages seems confusing!!
+  //ROS_INFO("Point cloud message duration: %f", end_time.toSec());
+  ROS_INFO("Iteration in the PCL duration: %f", end_time.toSec());
+  ROS_INFO("Number of points in the callback: %u",num_points);
   }
 
 
   void lasermessageCallback(const sensor_msgs::LaserScanConstPtr& laser_msg)
   {
     ROS_INFO("Laser callback");
-    //Start time for laser callback
-    ros::Time begin_time = ros::Time::now();
     sensor_msgs::LaserScan fused_laser;
     
     
@@ -192,7 +218,6 @@ class Talker
       projected_laser.scan_time=laser_msg->scan_time;
 
       num_range=laser_msg->ranges.size();
-
     }
 
     
@@ -200,9 +225,6 @@ class Talker
     {
       ROS_INFO("laser_msg size: %lu, projected_msg size: %lu", laser_msg->ranges.size(), projected_laser.ranges.size());
       m_pub.publish(*laser_msg);
-      //End time for laser callback
-      ros::Duration end_time = ros::Time::now() - begin_time;
-      ROS_INFO("Laser message duration: %f", end_time.toSec());
       return;
     }
 
@@ -226,29 +248,8 @@ class Talker
 
     projected_laser.header = laser_msg->header;
     m_pub.publish(fused_laser);
-    //End time for laser callback
-    ros::Duration end_time = ros::Time::now() - begin_time;
-    ROS_INFO("Laser message duration: %f", end_time.toSec());
   }
-
   
-  public:
-  Talker(std::string initial_msg)
-    : m_msg(initial_msg)
-  {
-    tf2_.reset(new tf2_ros::Buffer());
-    tf2_listener_.reset(new tf2_ros::TransformListener(*tf2_));
-    
-    
-    l_sub = m_nh.subscribe("/hsrb/base_scan", 5, &Talker::lasermessageCallback, this);
-    p_sub = m_nh.subscribe("/hsrb/head_rgbd_sensor/depth_registered/rectified_points", 5, &Talker::pointcloudCallback, this);
-    
-    
-    //Check whether advertise should be before or after subscribe*
-    m_pub = m_nh.advertise<sensor_msgs::LaserScan>("laser_output", 5);
-    pc_pub = m_nh.advertise<sensor_msgs::PointCloud2>("filtered_pcl",5);
-  }
-
 };
 
 
@@ -258,11 +259,20 @@ int main(int argc, char **argv)
   
   Talker t("s");
   ROS_INFO("Initialized object");
+
+  // Dedicated callback queue for PCL
+  std::thread spinner_thread_pcl([&callback_queue_pcl]() {
+    ros::SingleThreadedSpinner spinner_pcl;
+    spinner_pcl.spin(&callback_queue_pcl);
+  });
   
-  while (ros::ok())
-  {
-    ros::spinOnce();
-  }
+  // while (ros::ok())
+  // {
+  //   ros::spinOnce();
+  // }
+  ros::spin();
+  spinner_thread_pcl.join();
+
   return 0;
 }
 
