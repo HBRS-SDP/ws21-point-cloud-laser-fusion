@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>pointcloud_laserscan_fusion_policychange_nofilter</name>
+  <name>pointcloud_laserscan_fusion_timesynchronize</name>
   <version>0.0.0</version>
   <description>The pointcloud_laserscan_fusion package</description>
 
