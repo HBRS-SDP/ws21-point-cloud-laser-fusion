@@ -31,8 +31,6 @@ A node for converts a 3D point cloud into a 2D laser scan is developed in [ROS](
 
 ## Features
 
-
-
 ## Installation
 
 Installing from [Github source](https://github.com/HBRS-SDP/ws21-point-cloud-laser-fusion) is recommended :
