@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>pointcloud_laserscan_fusion_voxelgridfilter</name>
+  <name>pointcloud_laserscan_fusion_timesynchronize</name>
   <version>0.0.0</version>
   <description>The pointcloud_laserscan_fusion package</description>
 
@@ -18,18 +18,9 @@
   <depend>tf2_ros</depend>
   <depend>tf2_sensor_msgs</depend>
   
-  
-  
   <build_depend>std_msgs</build_depend>
   <build_export_depend>std_msgs</build_export_depend>
-  <build_export_depend>libpcl-all-dev</build_export_depend>
-  <build_depend>libpcl-all-dev</build_depend>
-  <build_depend>libpcl-conversions-dev</build_depend>
-  <exec_depend>libpcl-all</exec_depend>
-  <exec_depend>libpcl-conversions-dev</exec_depend>
-
   <exec_depend>std_msgs</exec_depend>
-
 
 
   <!-- The export tag contains other, unspecified, tags -->
@@ -38,5 +29,3 @@
 
   </export>
 </package>
-
-
