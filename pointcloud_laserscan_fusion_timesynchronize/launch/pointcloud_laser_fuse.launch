@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <arg name="laser_in" default="/hsrb/base_scan" />
+    <arg name="cloud_in" default="/hsrb/head_rgbd_sensor/depth_registered/rectified_points" />   
+    
+
+    <!-- run listener and talker nodes -->
+    <node pkg="pointcloud_laserscan_fusion_timesynchronize" type="fuse_pointcloud_laserscan" name="talker" output="screen">
+
+        <remap from="cloud_msg" to="$(arg cloud_in)"/>
+        <remap from="laser_msg" to ="$(arg laser_in)"/>
+    </node>  
+      
+
+   
+</launch>
