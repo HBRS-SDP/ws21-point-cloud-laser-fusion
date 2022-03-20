@@ -1,7 +1,7 @@
 # ws21-point-cloud-laser-fusion
 (WS2021)
 
-# Pointcloud Laser fusion
+# Pointcloud laser fusion
 
 English 
 
@@ -10,25 +10,27 @@ English
 [![v.3](https://github.com/HBRS-SDP/ws21-point-cloud-laser-fusion/tree/ver_3_added_filters_for_pointcloud)]
 [![v.4](https://github.com/HBRS-SDP/ws21-point-cloud-laser-fusion/tree/ver_4_run_subcribers_in_parallel)]
 
-### First Version v.1
+### First version v.1
 
 This First version of the code, is performing fusion using time synchronization.
 
-### Second Version v.2.0
+### Second version v.2.0
 
-In this version the time synchronization policy was modified in order to deal the problem of freeze and lag of the first version v.1
+Modified the policy for point cloud fusion. Two separate callbacks , one for laser message and the other for pointcloud. The projection of point cloud happens in the pointcloud call back and the fusion with the latest laser message is done in the laser callback.
 
-### Third Version v.3
+### Third version v.3
 
-The third version include Voxel Grid and Pass trough filter to reduce the number of points of the PCL. 
+Include Voxel Grid and Pass through filter to reduce the number of points in the Pointcloud.  
 
-### Fourth Version v.4
+### Fourth version v.4
 
-The fourth version implements MultiThreading.
+Includes two subscribers that could run in parallel. 
 
 ## Introduction
 
-A node for converts a 3D point cloud into a 2D laser scan is developed in [ROS](http://wiki.ros.org/pointcloud_to_laserscan) but it does not fuse both data. Therefore we created this repository to fuse the 3D point cloud data  into the 2D laser scan data. 
+We created this repository to fuse 3D point cloud data to laser scan data. 
+
+To perform this task, we referred to the implementation in [ROS](http://wiki.ros.org/pointcloud_to_laserscan) , where a 3D point cloud is projected into a 2D laserscan. 
 
 ## Features
 
@@ -37,6 +39,8 @@ A node for converts a 3D point cloud into a 2D laser scan is developed in [ROS](
 -Downsampling the PointCloud using a PassThrough Filter along a specified dimension. In this case “z”. This means that the filter curs off values that are outside a specific range.
 
 ## Installation
+
+Install [ROS Noetic](http://wiki.ros.org/noetic/Installation/Ubuntu)
 
 Installing from [Github source](https://github.com/HBRS-SDP/ws21-point-cloud-laser-fusion) is recommended :
 
@@ -47,6 +51,6 @@ git clone (https://github.com/HBRS-SDP/ws21-point-cloud-laser-fusion
 After to clone the repository go to your catkin workspace , open terminal and: 
 ```bash
 catkin build
-roslaunch pointcloud_laserscan_fusion pointcloud_laser_fuse.launch 
+roslaunch <package_name> <launch_file.launch>
 rviz
 ```
