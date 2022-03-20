@@ -1,19 +1,13 @@
 
 #include"Fusion.h"
-#include <string>
 
-Fusion::Fusion(ros::NodeHandle& nh, ros::NodeHandle& nh2):nh_(nh), nh2_(nh2)
+Fusion::Fusion(ros::NodeHandle& nh):nh_(nh)
 
 {
-
     tf2_.reset(new tf2_ros::Buffer());
     tf2Listener_.reset(new tf2_ros::TransformListener(*tf2_));
-
-    std::string laser_topic, pc_topic;
-    nh_.getParam("laser_topic", laser_topic);
-    nh2_.getParam("pc_topic", pc_topic);
-    laserSub_ = nh_.subscribe(laser_topic, 5, &Fusion::lasermessageCallback, this);
-    pcSub_ = nh2_.subscribe(pc_topic, 5, &Fusion::pointcloudCallback, this);
+    laserSub_ = nh_.subscribe("/hsrb/base_scan", 5, &Fusion::lasermessageCallback, this);
+    pcSub_ = nh_.subscribe("/hsrb/head_rgbd_sensor/depth_registered/rectified_points", 5, &Fusion::pointcloudCallback, this);
     projectedLaserPub_= nh_.advertise<sensor_msgs::LaserScan>("laser_output", 5);
     pointCloudPub_=nh_.advertise<sensor_msgs::PointCloud2>("filtered_pcl",5);
 }
@@ -23,41 +17,6 @@ void Fusion::pointcloudCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_ms
     ros::Time begin_time = ros :: Time :: now();
     int numPoints_=0;
     
-    // Container for original & filtered data
-    pcl::PCLPointCloud2* cloudf = new pcl::PCLPointCloud2; 
-    pcl::PCLPointCloud2ConstPtr cloudPtr(cloudf);
-    pcl::PCLPointCloud2 cloud_filtered;
-
-    // Convert to PCL data type
-    pcl_conversions::toPCL(*cloud_msg, *cloudf);
-
-
-    pcl::PCLPointCloud2::Ptr cloud_pass(new pcl::PCLPointCloud2);
-    pcl::PassThrough<pcl::PCLPointCloud2> pass;
-    pass.setInputCloud(cloudPtr);
-    pass.setFilterFieldName("z");
-    double z_filter_min,z_filter_max;
-    nh2_.getParam("z_filter_min", z_filter_min);
-    nh2_.getParam("z_filter_max",z_filter_max);
-
-    pass.setFilterLimits(0.0, 1.5);
-    pass.filter(*cloud_pass);  
-
-    // Perform the actual filtering
-    pcl::VoxelGrid<pcl::PCLPointCloud2> sor;
-    sor.setInputCloud (cloud_pass);
-    double leaf_size;
-    nh2_.getParam("leaf_size", leaf_size);
-    sor.setLeafSize (leaf_size, leaf_size, leaf_size);
-    sor.filter (cloud_filtered);
-
-    // Convert to ROS data type
-    // sensor_msgs::PointCloud2Ptr output;
-    sensor_msgs::PointCloud2Ptr output = boost::make_shared<sensor_msgs::PointCloud2>(*cloud_msg);
-    pcl_conversions::fromPCL(cloud_filtered, *output);
-
-    // Publish the data
-    pointCloudPub_.publish (*output);
 
     if (numRange_<0)
     {
@@ -79,12 +38,12 @@ void Fusion::pointcloudCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_ms
     sensor_msgs::PointCloud2Ptr cloud;
 
     // Transform cloud if necessary
-    if (!(projectedLaser_.header.frame_id == output->header.frame_id))
+    if (!(projectedLaser_.header.frame_id == cloud_msg->header.frame_id))
     {
         try
         {
         cloud.reset(new sensor_msgs::PointCloud2);
-        tf2_->transform(*output, *cloud, projectedLaser_.header.frame_id, ros::Duration(tolerance_));
+        tf2_->transform(*cloud_msg, *cloud, projectedLaser_.header.frame_id, ros::Duration(tolerance_));
         cloud_out = cloud;
         }
         catch (tf2::TransformException& ex)
@@ -95,7 +54,7 @@ void Fusion::pointcloudCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_ms
     }
     else
     {
-        cloud_out = output;
+        cloud_out = cloud_msg;
     }
 
     projectedLaser_.ranges.assign(numRange_,projectedLaser_.range_max);
@@ -156,7 +115,7 @@ void Fusion::pointcloudCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_ms
 
     ros:: Duration end_time =ros::Time::now()-begin_time;
     ROS_INFO("Time for one iteration in the PCL Callback: %f", end_time.toSec());
-    ROS_INFO("Number of points in the callback: %u",numPoints_);
+    ROS_INFO("Number of points in the callback: %lu",numPoints_);
 }
 
 
