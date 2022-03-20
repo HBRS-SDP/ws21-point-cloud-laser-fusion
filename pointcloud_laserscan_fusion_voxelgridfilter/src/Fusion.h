@@ -11,30 +11,29 @@
 #include <message_filters/sync_policies/approximate_time.h>
 
 //PCL Specific includes
+// #include<pcl/ros/conversions.h>
 #include<pcl_conversions/pcl_conversions.h>
 #include<pcl/point_cloud.h>
 #include<pcl/point_types.h>
 #include<pcl/filters/voxel_grid.h>
-#include <pcl/filters/passthrough.h>
 
 //CPP specific includes
 #include <string.h>
 #include <sstream>
-#include <thread>
+
 
 
 class Fusion
 {
   public:
 
-  Fusion(ros::NodeHandle& nh, ros::NodeHandle& nh2);
+  Fusion(ros::NodeHandle& nh);
   void pointcloudCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg);
   void lasermessageCallback(const sensor_msgs::LaserScanConstPtr& laser_msg);
   
   private:
 
   ros::NodeHandle nh_;
-  ros::NodeHandle nh2_;
   boost::shared_ptr<tf2_ros::Buffer> tf2_;
   boost::shared_ptr<tf2_ros::TransformListener> tf2Listener_;
   int numRange_=-1;
