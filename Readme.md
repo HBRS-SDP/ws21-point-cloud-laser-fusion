@@ -32,7 +32,6 @@ A node for converts a 3D point cloud into a 2D laser scan is developed in [ROS](
 ## Features
 
 
-
 -Downsampling the PointCloud using a VoxelGrid filter. A number of points in a voxel are approximated  with their centroid.
 
 -Downsampling the PointCloud using a PassThrough Filter along a specified dimension. In this case “z”. This means that the filter curs off values that are outside a specific range.
